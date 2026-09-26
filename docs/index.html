@@ -166,6 +166,31 @@
       color: #d97706;
     }
 
+    /* Reproducibility details */
+    .repro-details {
+      margin-top: 10px;
+      font-size: 12px;
+    }
+    .repro-details summary {
+      color: #57606a;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      padding: 2px 0;
+    }
+    .repro-details summary:hover { color: #1f2328; }
+    .repro-details .repro-body {
+      margin-top: 6px;
+      padding: 8px 12px;
+      background: #f7f8fa;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #57606a;
+      line-height: 1.8;
+    }
+
     /* Load custom report */
     .load-bar {
       display: flex;
@@ -285,13 +310,37 @@
         metricCard(nullStr(actions.tests_created),    "Tests added"),
       ]),
       el("p", {style: "margin-bottom:8px;"}, [
+        el("span", {style: "font-size:13px;color:#57606a;margin-right:16px;"}, [
+          "Baseline: ",
+          el("strong", {}, [nullStr(analysis.tests_examined) + " tests"])
+        ]),
+        el("span", {style: "font-size:13px;color:#57606a;margin-right:16px;"}, [
+          "Evolved: ",
+          el("strong", {}, [
+            (function () {
+              var base = parseInt(analysis.tests_examined) || 0;
+              var added = parseInt((actions.tests_created)) || 0;
+              var total = base + added;
+              return total > 0 ? String(total) + " tests" : "—";
+            })()
+          ])
+        ])
+      ]),
+      el("p", {style: "margin-bottom:8px;"}, [
         "Verification status: ",
         el("span", {className: "status-badge " + statusClass}, [verif.status || "—"])
       ]),
-      el("p", {style: "font-size:12px;color:#57606a;"}, [
-        "Baseline suite: " + nullStr(verif.baseline_suite_id) +
-        " | Evolved suite: " + nullStr(verif.evolved_suite_id)
-      ])
+      (function () {
+        var details = el("details", {className: "repro-details"});
+        var summary = el("summary", {}, ["Reproducibility details"]);
+        details.appendChild(summary);
+        var body = el("div", {className: "repro-body"});
+        body.appendChild(text("Baseline suite hash: " + nullStr(verif.baseline_suite_id)));
+        body.appendChild(el("br"));
+        body.appendChild(text("Evolved suite hash:  " + nullStr(verif.evolved_suite_id)));
+        details.appendChild(body);
+        return details;
+      })()
     ]);
     root.appendChild(summarySection);
 
@@ -337,14 +386,17 @@
     }
     root.appendChild(matSec);
 
-    // ---- Limitations ----
-    if (limits.length) {
-      var limSec = el("section", {}, [el("h2", {}, ["Limitations"])]);
-      var limList = el("ul", {className: "limitation-list"});
-      limits.forEach(function (l) { limList.appendChild(el("li", {}, [l])); });
-      limSec.appendChild(limList);
-      root.appendChild(limSec);
-    }
+    // ---- Scope & limitations ----
+    var scopeNotes = [
+      "Verification covers three controlled behavioral defects and does not claim exhaustive correctness.",
+      "Premium+Student behavior is covered by executable tests, but the current matrix does not include a dedicated incorrect-rate mutant for that case.",
+      "The evaluation measures test-strength improvement rather than developer-time savings."
+    ];
+    var limSec = el("section", {}, [el("h2", {}, ["Scope & limitations"])]);
+    var limList = el("ul", {className: "limitation-list"});
+    scopeNotes.forEach(function (l) { limList.appendChild(el("li", {}, [l])); });
+    limSec.appendChild(limList);
+    root.appendChild(limSec);
   }
 
   function metricCard(value, label) {
