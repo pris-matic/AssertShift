@@ -147,13 +147,15 @@ The semantic findings (STALE/MISSING classifications) are produced by Bob's anal
 
 ---
 
-## Genuine limitations
+## Scope and limitations
 
-- Verification measures detection of **three chosen single-defect mutants** only. It does not prove the implementation or test suite is complete or correct in general.
-- No manual-time benchmark was conducted; no productivity or time-saved claims are made.
-- `BREAKING = 0` reflects that the baseline suite was designed to pass on the correct post-change code. This is expected and honest.
-- PDF document reading was not demonstrated; Bob read `inputs/change-request.md` (Markdown) directly.
-- Bob session evidence is captured in `bob_sessions/README.md`; live IDE screenshots were not committed.
+- Verification covers three controlled behavioral defects and demonstrates improved detection for those defects; it does not claim exhaustive correctness.
+- Premium+Student behavior is covered by executable tests, but the current matrix does not include a dedicated mutant for an incorrect Premium+Student rate.
+- The evaluation measures test-strength improvement rather than developer-time savings.
+
+`BREAKING = 0` because the baseline suite still passes on the correct post-change implementation; the demonstrated problem is stale and missing test intent rather than failing legacy tests.
+
+IBM Bob audit evidence and IDE screenshots are available in `bob_sessions/`.
 
 ---
 
