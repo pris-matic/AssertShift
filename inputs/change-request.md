@@ -30,13 +30,24 @@ The current discount service applies a flat 10% discount to Premium customers an
 2. **Premium and Student** (`is_premium=True`, `is_student=True`): **20%** of `order_total`.
 3. **Non-Premium** (including Student-only; `is_premium=False`): **0%** — _preserved invariant_.
 
-### 3.2 Cap
+### 3.2 Calculation order
 
-After calculating the percentage, **cap the discount amount at `Decimal("100.00")`**. If the raw percentage discount exceeds $100.00, return exactly `Decimal("100.00")`.
+Apply the discount in this order:
 
-### 3.3 Rounding
+1. Select the applicable discount rate.
+2. Calculate the raw discount amount from `order_total`.
+3. Round the discount amount to two decimal places using `ROUND_HALF_UP`.
+4. Cap the rounded discount at `Decimal("100.00")`.
 
-Round the final result to two decimal places using **`ROUND_HALF_UP`**.
+### 3.3 Cap
+
+After rounding, if the discount amount exceeds `Decimal("100.00")`,
+return exactly `Decimal("100.00")`.
+
+### 3.4 Rounding
+
+Round the calculated discount amount to two decimal places using
+`ROUND_HALF_UP` before applying the cap.
 
 ---
 
