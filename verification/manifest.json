@@ -1,0 +1,17 @@
+{
+  "project": "AssertShift",
+  "description": "Verification manifest - records suite identities and last matrix run.",
+  "baseline_suite_path": "verification_snapshots/baseline_tests/test_discounts.py",
+  "evolved_suite_path": "sample_app/tests/test_discounts.py",
+  "baseline_suite_hash": "2291368d3102775a",
+  "evolved_suite_hash": "78fa1c73c28ace99",
+  "candidate_hashes": {
+    "correct": "ab42eecd8e51beca",
+    "premium_still_10": "9218b3879155b1d9",
+    "missing_discount_cap": "fcdc86c4f87ad330",
+    "student_without_premium": "df596861e0c3c42d"
+  },
+  "last_matrix_run": "2026-09-26T14:45:33.056847+00:00",
+  "verification_status": "VERIFIED",
+  "notes": "Hashes and status are populated by scripts/run_verification_matrix.py."
+}
