@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AssertShift — Report Viewer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #1f2328;
+      background: #ffffff;
+    }
+
+    .page { max-width: 800px; margin: 0 auto; padding: 32px 20px 64px; }
+
+    header {
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 20px;
+      margin-bottom: 28px;
+    }
+    header h1 { font-size: 22px; font-weight: 700; }
+    header p  { color: #57606a; font-size: 13px; margin-top: 4px; }
+    .label-disclaimer {
+      display: inline-block;
+      margin-top: 10px;
+      background: #f7f8fa;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: #57606a;
+    }
+
+    section { margin-bottom: 36px; }
+    h2 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #57606a;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 6px;
+      margin-bottom: 16px;
+    }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .status-VERIFIED  { background: #dcfce7; color: #166534; }
+    .status-FAILED    { background: #fee2e2; color: #991b1b; }
+    .status-INVALID   { background: #fef9c3; color: #854d0e; }
+    .status-null      { background: #f7f8fa; color: #57606a; }
+
+    /* Summary grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .metric {
+      background: #f7f8fa;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .metric-value { font-size: 22px; font-weight: 700; color: #3b82d4; }
+    .metric-label { font-size: 11px; color: #57606a; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* Findings */
+    .finding-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .finding-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #f7f8fa;
+      cursor: pointer;
+      user-select: none;
+    }
+    .finding-header:hover { background: #eef0f3; }
+    .finding-id { font-weight: 700; font-size: 13px; min-width: 52px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-STALE   { background: #fef3c7; color: #92400e; }
+    .badge-MISSING { background: #dbeafe; color: #1e40af; }
+    .badge-BREAKING{ background: #fee2e2; color: #991b1b; }
+    .finding-title { flex: 1; font-size: 13px; color: #1f2328; }
+    .chevron { font-size: 10px; color: #57606a; transition: transform 0.15s; }
+    .finding-body {
+      display: none;
+      padding: 12px 14px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 13px;
+    }
+    .finding-body.open { display: block; }
+    .finding-body dl { display: grid; grid-template-columns: 120px 1fr; gap: 4px 12px; }
+    .finding-body dt { color: #57606a; font-weight: 500; }
+    .finding-body dd { color: #1f2328; word-break: break-word; }
+
+    /* Matrix table */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f7f8fa;
+      text-align: left;
+      padding: 8px 10px;
+      font-weight: 600;
+      border-bottom: 2px solid #e5e7eb;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #57606a;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f7f8fa; }
+
+    .res-PASS            { color: #166534; font-weight: 600; }
+    .res-BEHAVIORAL_FAIL { color: #991b1b; font-weight: 600; }
+    .res-INFRA_ERROR     { color: #854d0e; font-weight: 600; }
+
+    .row-detail { display: none; }
+    .row-detail td {
+      background: #f7f8fa;
+      font-size: 12px;
+      color: #57606a;
+      padding: 6px 10px 10px 26px;
+    }
+    .row-detail.open { display: table-row; }
+    .row-toggle { cursor: pointer; color: #3b82d4; }
+
+    /* Limitations */
+    .limitation-list { list-style: none; }
+    .limitation-list li {
+      padding: 8px 12px 8px 28px;
+      position: relative;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 13px;
+      color: #57606a;
+    }
+    .limitation-list li:last-child { border-bottom: none; }
+    .limitation-list li::before {
+      content: "⚠";
+      position: absolute;
+      left: 8px;
+      color: #d97706;
+    }
+
+    /* Load custom report */
+    .load-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .load-bar label { font-size: 13px; color: #57606a; }
+    .load-bar input[type=file] { font-size: 12px; }
+    .load-bar button {
+      padding: 5px 14px;
+      font-size: 12px;
+      background: #3b82d4;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .load-bar button:hover { background: #2563eb; }
+    .load-error { color: #991b1b; font-size: 12px; margin-top: 4px; width: 100%; }
+
+    /* Empty / loading state */
+    .empty { color: #57606a; font-style: italic; font-size: 13px; }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 12px;
+      color: #57606a;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>AssertShift — Report Viewer</h1>
+    <p>Displays the JSON report produced by Bob's analysis and the verification matrix.</p>
+    <span class="label-disclaimer">Report viewer — Bob analysis runs in the IDE</span>
+  </header>
+
+  <!-- Load a custom report -->
+  <div class="load-bar">
+    <label for="file-input">Load a compatible JSON report:</label>
+    <input type="file" id="file-input" accept=".json" />
+    <button id="load-btn">Load</button>
+    <span class="load-error" id="load-error"></span>
+  </div>
+
+  <!-- Dynamic content injected here -->
+  <div id="report-root"></div>
+
+  <footer>Made with IBM Bob</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // -----------------------------------------------------------------------
+  // Safe text rendering helpers
+  // -----------------------------------------------------------------------
+  function text(str) {
+    return document.createTextNode(str == null ? "" : String(str));
+  }
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (k === "className") node.className = attrs[k];
+        else if (k === "style")  node.style.cssText = attrs[k];
+        else node.setAttribute(k, attrs[k]);
+      });
+    }
+    if (children) {
+      children.forEach(function (c) {
+        if (c == null) return;
+        node.appendChild(typeof c === "string" ? text(c) : c);
+      });
+    }
+    return node;
+  }
+
+  function nullStr(v) {
+    if (v === null || v === undefined) return "—";
+    return String(v);
+  }
+
+  // -----------------------------------------------------------------------
+  // Render
+  // -----------------------------------------------------------------------
+  function renderReport(data) {
+    var root = document.getElementById("report-root");
+    root.innerHTML = "";
+
+    // Header meta
+    var analysis  = data.analysis  || {};
+    var verif     = data.verification || {};
+    var findings  = data.findings   || [];
+    var limits    = data.limitations || [];
+    var actions   = data.actions    || {};
+
+    // ---- Summary section ----
+    var statusClass = "status-" + (verif.status || "null");
+    var summarySection = el("section", {}, [
+      el("h2", {}, ["Summary"]),
+      el("div", {className: "summary-grid"}, [
+        metricCard(nullStr(analysis.tests_examined),  "Tests examined"),
+        metricCard(nullStr(analysis.breaking_tests),  "Breaking"),
+        metricCard(nullStr(analysis.stale_tests),     "Stale"),
+        metricCard(nullStr(analysis.missing_tests),   "Missing"),
+        metricCard(nullStr(actions.tests_updated),    "Tests updated"),
+        metricCard(nullStr(actions.tests_created),    "Tests added"),
+      ]),
+      el("p", {style: "margin-bottom:8px;"}, [
+        "Verification status: ",
+        el("span", {className: "status-badge " + statusClass}, [verif.status || "—"])
+      ]),
+      el("p", {style: "font-size:12px;color:#57606a;"}, [
+        "Baseline suite: " + nullStr(verif.baseline_suite_id) +
+        " | Evolved suite: " + nullStr(verif.evolved_suite_id)
+      ])
+    ]);
+    root.appendChild(summarySection);
+
+    // ---- Behavior changes ----
+    if ((analysis.behavior_changes || []).length || (analysis.preserved_invariants || []).length) {
+      var bcSec = el("section", {}, [el("h2", {}, ["Behavior changes"])]);
+      if ((analysis.behavior_changes || []).length) {
+        var ul = el("ul", {style: "padding-left:20px;font-size:13px;"});
+        (analysis.behavior_changes || []).forEach(function (c) {
+          ul.appendChild(el("li", {}, [c]));
+        });
+        bcSec.appendChild(ul);
+      }
+      if ((analysis.preserved_invariants || []).length) {
+        bcSec.appendChild(el("p", {style: "margin-top:10px;font-size:13px;font-weight:600;"}, ["Preserved invariants:"]));
+        var ul2 = el("ul", {style: "padding-left:20px;font-size:13px;"});
+        (analysis.preserved_invariants || []).forEach(function (c) {
+          ul2.appendChild(el("li", {}, [c]));
+        });
+        bcSec.appendChild(ul2);
+      }
+      root.appendChild(bcSec);
+    }
+
+    // ---- Findings ----
+    var findSec = el("section", {}, [el("h2", {}, ["Findings (" + findings.length + ")"])]);
+    if (!findings.length) {
+      findSec.appendChild(el("p", {className: "empty"}, ["No findings recorded."]));
+    } else {
+      findings.forEach(function (f) {
+        findSec.appendChild(findingCard(f));
+      });
+    }
+    root.appendChild(findSec);
+
+    // ---- Verification matrix ----
+    var matSec = el("section", {}, [el("h2", {}, ["Verification matrix"])]);
+    var runs = verif.matrix_results || [];
+    if (!runs.length) {
+      matSec.appendChild(el("p", {className: "empty"}, ["No matrix results recorded."]));
+    } else {
+      matSec.appendChild(matrixTable(runs));
+    }
+    root.appendChild(matSec);
+
+    // ---- Limitations ----
+    if (limits.length) {
+      var limSec = el("section", {}, [el("h2", {}, ["Limitations"])]);
+      var limList = el("ul", {className: "limitation-list"});
+      limits.forEach(function (l) { limList.appendChild(el("li", {}, [l])); });
+      limSec.appendChild(limList);
+      root.appendChild(limSec);
+    }
+  }
+
+  function metricCard(value, label) {
+    return el("div", {className: "metric"}, [
+      el("div", {className: "metric-value"}, [value]),
+      el("div", {className: "metric-label"}, [label])
+    ]);
+  }
+
+  function findingCard(f) {
+    var card = el("div", {className: "finding-card"});
+    var header = el("div", {className: "finding-header"});
+    var body   = el("div", {className: "finding-body"});
+
+    var cls = f.classification || "UNKNOWN";
+    header.appendChild(el("span", {className: "finding-id"}, [f.id || "—"]));
+    header.appendChild(el("span", {className: "badge badge-" + cls}, [cls]));
+    header.appendChild(el("span", {className: "finding-title"}, [f.requirement || f.test_or_gap || ""]));
+    var chev = el("span", {className: "chevron"}, ["▼"]);
+    header.appendChild(chev);
+
+    header.addEventListener("click", function () {
+      var open = body.classList.toggle("open");
+      chev.style.transform = open ? "rotate(180deg)" : "";
+    });
+
+    var dl = el("dl");
+    function addRow(dt, dd) {
+      dl.appendChild(el("dt", {}, [dt]));
+      dl.appendChild(el("dd", {}, [dd || "—"]));
+    }
+    addRow("Test / Gap",  f.test_or_gap);
+    addRow("Reason",      f.reason);
+    addRow("Evidence",    f.evidence);
+    addRow("Action",      f.recommended_action);
+    body.appendChild(dl);
+
+    card.appendChild(header);
+    card.appendChild(body);
+    return card;
+  }
+
+  function matrixTable(runs) {
+    var wrap = el("div", {style: "overflow-x:auto;"});
+    var tbl  = el("table");
+    tbl.appendChild(el("thead", {}, [
+      el("tr", {}, [
+        el("th", {}, ["Suite"]),
+        el("th", {}, ["Candidate"]),
+        el("th", {}, ["Result"]),
+        el("th", {}, ["P / F / E"]),
+        el("th", {}, ["Details"])
+      ])
+    ]));
+    var tbody = el("tbody");
+    runs.forEach(function (r, idx) {
+      var resClass = "res-" + (r.result || "");
+      var detailId = "row-detail-" + idx;
+      var mainRow = el("tr", {}, [
+        el("td", {}, [r.suite || "—"]),
+        el("td", {}, [r.candidate || "—"]),
+        el("td", {}, [el("span", {className: resClass}, [r.result || "—"])]),
+        el("td", {}, [
+          (r.counts ? r.counts.passed : "?") + " / " +
+          (r.counts ? r.counts.failed : "?") + " / " +
+          (r.counts ? r.counts.error  : "?")
+        ]),
+        el("td", {}, [
+          el("span", {className: "row-toggle", "data-target": detailId}, ["▼ expand"])
+        ])
+      ]);
+      tbody.appendChild(mainRow);
+
+      var detailRow = el("tr", {className: "row-detail", id: detailId});
+      var detailTd  = el("td", {colspan: "5"});
+      if (r.relevant_failure) {
+        detailTd.appendChild(el("p", {}, [
+          el("strong", {}, ["Relevant failure: "]), r.relevant_failure
+        ]));
+      }
+      if ((r.failing_tests || []).length) {
+        detailTd.appendChild(el("p", {style: "margin-top:4px;"}, [
+          el("strong", {}, ["Failing tests: "]),
+          (r.failing_tests || []).join(", ")
+        ]));
+      }
+      if (r.note) {
+        detailTd.appendChild(el("p", {style: "margin-top:4px;font-style:italic;"}, [r.note]));
+      }
+      detailTd.appendChild(el("p", {style: "margin-top:4px;color:#aaa;"}, [
+        "Hashes — suite: " + (r.suite_hash || "—") + " | candidate: " + (r.candidate_hash || "—")
+      ]));
+      detailRow.appendChild(detailTd);
+      tbody.appendChild(detailRow);
+    });
+    tbl.appendChild(tbody);
+
+    // Expand toggle
+    tbl.addEventListener("click", function (e) {
+      var toggle = e.target;
+      if (!toggle.classList.contains("row-toggle")) return;
+      var targetId = toggle.getAttribute("data-target");
+      var row = document.getElementById(targetId);
+      if (!row) return;
+      var open = row.classList.toggle("open");
+      toggle.textContent = open ? "▲ collapse" : "▼ expand";
+    });
+
+    wrap.appendChild(tbl);
+    return wrap;
+  }
+
+  // -----------------------------------------------------------------------
+  // File loader
+  // -----------------------------------------------------------------------
+  document.getElementById("load-btn").addEventListener("click", function () {
+    var fileInput = document.getElementById("file-input");
+    var errEl = document.getElementById("load-error");
+    errEl.textContent = "";
+    if (!fileInput.files.length) {
+      errEl.textContent = "No file selected.";
+      return;
+    }
+    var file = fileInput.files[0];
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        if (!data.project || !data.verification) {
+          throw new Error("File does not appear to be an AssertShift report (missing project or verification fields).");
+        }
+        renderReport(data);
+      } catch (err) {
+        errEl.textContent = "Error: " + err.message;
+      }
+    };
+    reader.onerror = function () { errEl.textContent = "Could not read file."; };
+    reader.readAsText(file);
+  });
+
+  // -----------------------------------------------------------------------
+  // Auto-load default report (relative to this file: data/assertshift-report.json)
+  // -----------------------------------------------------------------------
+  fetch("data/assertshift-report.json")
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
+    .then(function (data) { renderReport(data); })
+    .catch(function (err) {
+      document.getElementById("report-root").innerHTML =
+        "<p style='color:#57606a;font-style:italic;'>Default report could not be loaded (" +
+        String(err.message).replace(/</g, "&lt;") +
+        "). Use the file input above to load a local JSON report.</p>";
+    });
+})();
+</script>
+</body>
+</html>

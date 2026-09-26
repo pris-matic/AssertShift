@@ -1,0 +1,230 @@
+{
+  "project": "AssertShift",
+  "change_request": "inputs/change-request.md",
+  "generated_at": "2026-09-26T14:45:33.056847+00:00",
+  "analysis": {
+    "behavior_changes": [
+      "Premium-only discount rate changed from 10% to 15%",
+      "New Premium+Student combination discount: 20%",
+      "New $100 cap on discount amount (after percentage calculation)",
+      "Round-half-up to two decimal places (unchanged, now made explicit)"
+    ],
+    "preserved_invariants": [
+      "Non-Premium customers (including Student-only) always receive 0% discount",
+      "Negative order_total raises ValueError",
+      "Zero order_total returns Decimal('0.00')"
+    ],
+    "tests_examined": 8,
+    "breaking_tests": 0,
+    "stale_tests": 2,
+    "missing_tests": 4
+  },
+  "findings": [
+    {
+      "id": "F-001",
+      "classification": "STALE",
+      "requirement": "Premium-only discount is 15% (inputs/change-request.md §3.1 rule 1)",
+      "test_or_gap": "verification_snapshots/baseline_tests/test_discounts.py::TestPremiumDiscount::test_premium_gets_a_discount",
+      "reason": "Assertion `result > Decimal('0.00')` passes for both the old 10% and the new 15%. Counterexample: the premium_still_10 mutant returns Decimal('10.00'), which still satisfies > 0.",
+      "evidence": "baseline suite: PASS on premium_still_10 mutant; evolved suite: BEHAVIORAL_FAIL on same mutant (test_premium_discount_exact_rate asserts == Decimal('15.00'), actual 10.00)",
+      "recommended_action": "Replace `assert result > Decimal('0.00')` with `assert result == Decimal('15.00')`"
+    },
+    {
+      "id": "F-002",
+      "classification": "STALE",
+      "requirement": "Premium-only discount is 15% (inputs/change-request.md §3.1 rule 1)",
+      "test_or_gap": "verification_snapshots/baseline_tests/test_discounts.py::TestPremiumDiscount::test_premium_discount_is_positive",
+      "reason": "Assertion `result > Decimal('0.00')` on a $200 order passes for both 10% ($20) and 15% ($30). Does not constrain the rate.",
+      "evidence": "baseline suite: PASS on premium_still_10 mutant; evolved test_premium_discount_200 asserts == Decimal('30.00')",
+      "recommended_action": "Replace with `assert result == Decimal('30.00')`"
+    },
+    {
+      "id": "F-003",
+      "classification": "MISSING",
+      "requirement": "Premium+Student combination discount is 20% (inputs/change-request.md §3.1 rule 2)",
+      "test_or_gap": "No test in baseline suite covers is_premium=True, is_student=True",
+      "reason": "The combination case is entirely absent from the baseline suite. There is no baseline assertion that constrains the Premium+Student rate.",
+      "evidence": "The baseline suite contains no targeted Premium+Student assertion. The evolved suite adds test_premium_and_student_combination, which passes against the correct post-change implementation (Decimal('20.00')). Limitation: the current three-mutant matrix does not include a dedicated mutant for an incorrect Premium+Student rate, so this finding is demonstrated through missing baseline coverage plus the new executable acceptance test, not through a dedicated mutant kill.",
+      "recommended_action": "Add test: calculate_discount(Decimal('100.00'), is_premium=True, is_student=True) == Decimal('20.00')"
+    },
+    {
+      "id": "F-004",
+      "classification": "MISSING",
+      "requirement": "Non-Premium Student-only invariant: 0% discount (inputs/change-request.md §3.1 rule 3, §6)",
+      "test_or_gap": "No test in baseline suite for is_premium=False, is_student=True",
+      "reason": "The preserved invariant — Student-only gets 0% — is never tested. The student_without_premium mutant (grants 20% to non-premium students) passes all 8 baseline tests.",
+      "evidence": "baseline suite: PASS on student_without_premium mutant (all 8 pass); evolved test_student_only_gets_no_discount catches it: assert Decimal('20.00') == Decimal('0.00')",
+      "recommended_action": "Add test: calculate_discount(Decimal('100.00'), is_premium=False, is_student=True) == Decimal('0.00')"
+    },
+    {
+      "id": "F-005",
+      "classification": "MISSING",
+      "requirement": "$100 cap on discount amount (inputs/change-request.md §3.2)",
+      "test_or_gap": "No test in baseline suite for order_total that would produce a raw discount > $100",
+      "reason": "The cap behavior is never exercised. The missing_discount_cap mutant (no cap applied) passes all 8 baseline tests.",
+      "evidence": "baseline suite: PASS on missing_discount_cap mutant; evolved test_cap_premium_only catches it: assert Decimal('150.00') == Decimal('100.00'); evolved test_rounding_then_cap also catches it: assert Decimal('100.01') == Decimal('100.00')",
+      "recommended_action": "Add tests: calculate_discount(Decimal('1000.00'), is_premium=True, ...) == Decimal('100.00')"
+    },
+    {
+      "id": "F-006",
+      "classification": "MISSING",
+      "requirement": "Rounding boundary near cap (inputs/change-request.md §3.3)",
+      "test_or_gap": "No rounding-then-cap boundary test in baseline suite",
+      "reason": "No test verifies that a value which rounds above $100.00 is correctly capped. $666.70 x 15% = $100.005; ROUND_HALF_UP yields $100.01; cap reduces to $100.00.",
+      "evidence": "Evolved test_rounding_then_cap verifies Decimal('666.70') -> Decimal('100.00') on the correct implementation; missing_discount_cap mutant fails it with Decimal('100.01') != Decimal('100.00')",
+      "recommended_action": "Add boundary test: calculate_discount(Decimal('666.70'), is_premium=True, is_student=False) == Decimal('100.00')"
+    }
+  ],
+  "actions": {
+    "tests_updated": 2,
+    "tests_created": 11
+  },
+  "verification": {
+    "baseline_suite_id": "sha256:2291368d3102775a",
+    "evolved_suite_id": "sha256:78fa1c73c28ace99",
+    "correct_baseline_passes": true,
+    "correct_evolved_passes": true,
+    "matrix_results": [
+      {
+        "suite": "baseline",
+        "candidate": "correct",
+        "result": "PASS",
+        "exit_code": 0,
+        "counts": {"passed": 8, "failed": 0, "error": 0},
+        "failing_tests": [],
+        "relevant_failure": null,
+        "duration_s": 0.32,
+        "candidate_hash": "ab42eecd8e51beca",
+        "suite_hash": "2291368d3102775a"
+      },
+      {
+        "suite": "baseline",
+        "candidate": "premium_still_10",
+        "result": "PASS",
+        "exit_code": 0,
+        "counts": {"passed": 8, "failed": 0, "error": 0},
+        "failing_tests": [],
+        "relevant_failure": null,
+        "duration_s": 0.318,
+        "candidate_hash": "9218b3879155b1d9",
+        "suite_hash": "2291368d3102775a",
+        "note": "Mutant ESCAPES baseline (stale >0 assertion does not pin rate)"
+      },
+      {
+        "suite": "baseline",
+        "candidate": "missing_discount_cap",
+        "result": "PASS",
+        "exit_code": 0,
+        "counts": {"passed": 8, "failed": 0, "error": 0},
+        "failing_tests": [],
+        "relevant_failure": null,
+        "duration_s": 0.269,
+        "candidate_hash": "fcdc86c4f87ad330",
+        "suite_hash": "2291368d3102775a",
+        "note": "Mutant ESCAPES baseline (no cap test in baseline)"
+      },
+      {
+        "suite": "baseline",
+        "candidate": "student_without_premium",
+        "result": "PASS",
+        "exit_code": 0,
+        "counts": {"passed": 8, "failed": 0, "error": 0},
+        "failing_tests": [],
+        "relevant_failure": null,
+        "duration_s": 0.255,
+        "candidate_hash": "df596861e0c3c42d",
+        "suite_hash": "2291368d3102775a",
+        "note": "Mutant ESCAPES baseline (no student-only invariant test in baseline)"
+      },
+      {
+        "suite": "evolved",
+        "candidate": "correct",
+        "result": "PASS",
+        "exit_code": 0,
+        "counts": {"passed": 19, "failed": 0, "error": 0},
+        "failing_tests": [],
+        "relevant_failure": null,
+        "duration_s": 0.283,
+        "candidate_hash": "ab42eecd8e51beca",
+        "suite_hash": "78fa1c73c28ace99"
+      },
+      {
+        "suite": "evolved",
+        "candidate": "premium_still_10",
+        "result": "BEHAVIORAL_FAIL",
+        "exit_code": 1,
+        "counts": {"passed": 15, "failed": 4, "error": 0},
+        "failing_tests": [
+          "TestPremiumOnlyDiscount::test_premium_discount_exact_rate",
+          "TestPremiumOnlyDiscount::test_premium_discount_200",
+          "TestPremiumOnlyDiscount::test_rounding_boundary_just_below_cap",
+          "TestPremiumOnlyDiscount::test_rounding_then_cap"
+        ],
+        "relevant_failure": "test_premium_discount_exact_rate: assert Decimal('10.00') == Decimal('15.00')",
+        "duration_s": 0.336,
+        "candidate_hash": "9218b3879155b1d9",
+        "suite_hash": "78fa1c73c28ace99",
+        "note": "Mutant CAUGHT — relevant failure on rate test (F-001 fix). Fragments '10.00' and '15.00' present in failure output."
+      },
+      {
+        "suite": "evolved",
+        "candidate": "missing_discount_cap",
+        "result": "BEHAVIORAL_FAIL",
+        "exit_code": 1,
+        "counts": {"passed": 16, "failed": 3, "error": 0},
+        "failing_tests": [
+          "TestPremiumOnlyDiscount::test_cap_premium_only",
+          "TestPremiumOnlyDiscount::test_rounding_then_cap",
+          "TestPremiumStudentDiscount::test_cap_premium_and_student"
+        ],
+        "relevant_failure": "test_cap_premium_only: assert Decimal('150.00') == Decimal('100.00'); test_rounding_then_cap: assert Decimal('100.01') == Decimal('100.00')",
+        "duration_s": 0.325,
+        "candidate_hash": "fcdc86c4f87ad330",
+        "suite_hash": "78fa1c73c28ace99",
+        "note": "Mutant CAUGHT — relevant failures on cap and rounding-then-cap tests (F-005/F-006 fixes). Fragments '150.00' and '100.00' present in failure output."
+      },
+      {
+        "suite": "evolved",
+        "candidate": "student_without_premium",
+        "result": "BEHAVIORAL_FAIL",
+        "exit_code": 1,
+        "counts": {"passed": 17, "failed": 2, "error": 0},
+        "failing_tests": [
+          "TestNonPremiumDiscount::test_student_only_gets_no_discount",
+          "TestNonPremiumDiscount::test_student_only_large_order_gets_no_discount"
+        ],
+        "relevant_failure": "test_student_only_gets_no_discount: assert Decimal('20.00') == Decimal('0.00')",
+        "duration_s": 0.354,
+        "candidate_hash": "df596861e0c3c42d",
+        "suite_hash": "78fa1c73c28ace99",
+        "note": "Mutant CAUGHT — relevant failure on invariant test (F-004 fix). Fragments '20.00' and '0.00' present in failure output."
+      }
+    ],
+    "mutants_escaped_baseline": ["premium_still_10", "missing_discount_cap", "student_without_premium"],
+    "mutants_caught_evolved": ["premium_still_10", "missing_discount_cap", "student_without_premium"],
+    "infra_errors": 0,
+    "unverified_behaviors": 0,
+    "status": "VERIFIED"
+  },
+  "bob_evidence": [
+    {
+      "type": "plan_analysis",
+      "description": "Bob (Plan mode) read PROJECT_SPEC.md, inputs/change-request.md, sample_app/app/discounts.py, and verification_snapshots/baseline_tests/test_discounts.py. Identified 2 STALE and 4 MISSING findings. No BREAKING findings (baseline passes on correct post-change code).",
+      "session_file": "bob_sessions/README.md"
+    },
+    {
+      "type": "test_evolution",
+      "description": "Bob (Agent mode) tightened 2 stale assertions and created 11 new tests covering Premium+Student combination, Student-only invariant, cap behavior, and rounding-then-cap boundary. Unaffected tests preserved intact.",
+      "changed_files": ["sample_app/tests/test_discounts.py"],
+      "session_file": "bob_sessions/README.md"
+    }
+  ],
+  "limitations": [
+    "This verification measures detection of exactly three chosen, interface-compatible single-defect mutants — not proof the implementation or test suite is complete or correct in general.",
+    "No manual-time benchmark was conducted; productivity claims are omitted per spec.",
+    "The main controlled scenario has BREAKING = 0 because the baseline suite passes on the correct post-change implementation. The project supports the BREAKING classification conceptually, but no separate BREAKING example was included in the recorded main run.",
+    "PDF document reading was not demonstrated; Bob read inputs/change-request.md (Markdown) directly.",
+    "Bob session exports are captured as notes in bob_sessions/README.md; IDE screenshots were not committed.",
+    "F-003 (Premium+Student coverage) is demonstrated through missing baseline coverage and the new evolved acceptance test. The current three-mutant scope does not include a dedicated mutant for an incorrect Premium+Student rate."
+  ]
+}
