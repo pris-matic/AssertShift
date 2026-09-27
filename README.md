@@ -162,8 +162,8 @@ IBM Bob audit evidence and IDE screenshots are available in `bob_sessions/`.
 ## Submission placeholders
 
 ```
-PUBLIC_REPOSITORY_URL=TBD
-APPLICATION_URL=TBD
+PUBLIC_REPOSITORY_URL=https://github.com/pris-matic/AssertShift
+APPLICATION_URL=https://pris-matic.github.io/AssertShift/
 VIDEO_URL=TBD
 BOB_SESSION_EVIDENCE=bob_sessions/README.md
 ```
