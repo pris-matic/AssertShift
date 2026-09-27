@@ -71,14 +71,14 @@ Bob examined the baseline suite and identified **0 BREAKING**, **2 STALE**, and 
 ### F-005 — MISSING
 
 - **Gap:** No test uses an order total large enough to produce a raw discount > $100
-- **Requirement:** $100 cap on discount amount (`change-request.md §3.2`)
+- **Requirement:** $100 cap on discount amount (`change-request.md §3.3`)
 - **Evidence:** `missing_discount_cap` mutant (no cap) passes all 8 baseline tests. Evolved `test_cap_premium_only` catches it: `assert Decimal('150.00') == Decimal('100.00')`.
 - **Action:** Add `test_cap_premium_only` and `test_cap_premium_and_student`
 
 ### F-006 — MISSING
 
 - **Gap:** No rounding-then-cap boundary test
-- **Requirement:** ROUND_HALF_UP + cap interaction (`change-request.md §3.3`)
+- **Requirement:** Rounding-then-cap behavior (`change-request.md §§3.2–3.4` — calculation order, cap, rounding)
 - **Reasoning:** $666.70 × 15% = $100.005; ROUND_HALF_UP → $100.01; cap → $100.00. The correct implementation caps the rounded value; the `missing_discount_cap` mutant returns $100.01.
 - **Action:** Add `test_rounding_then_cap` (`Decimal('666.70')` → `Decimal('100.00')`)
 
