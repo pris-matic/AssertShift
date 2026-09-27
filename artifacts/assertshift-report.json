@@ -6,7 +6,7 @@
     "behavior_changes": [
       "Premium-only discount rate changed from 10% to 15%",
       "New Premium+Student combination discount: 20%",
-      "New $100 cap on discount amount (after percentage calculation)",
+      "New $100 cap on the rounded discount amount",
       "Round-half-up to two decimal places (unchanged, now made explicit)"
     ],
     "preserved_invariants": [
@@ -59,7 +59,7 @@
     {
       "id": "F-005",
       "classification": "MISSING",
-      "requirement": "$100 cap on discount amount (inputs/change-request.md §3.2)",
+      "requirement": "$100 cap on discount amount (inputs/change-request.md §3.3)",
       "test_or_gap": "No test in baseline suite for order_total that would produce a raw discount > $100",
       "reason": "The cap behavior is never exercised. The missing_discount_cap mutant (no cap applied) passes all 8 baseline tests.",
       "evidence": "baseline suite: PASS on missing_discount_cap mutant; evolved test_cap_premium_only catches it: assert Decimal('150.00') == Decimal('100.00'); evolved test_rounding_then_cap also catches it: assert Decimal('100.01') == Decimal('100.00')",
@@ -68,7 +68,7 @@
     {
       "id": "F-006",
       "classification": "MISSING",
-      "requirement": "Rounding boundary near cap (inputs/change-request.md §3.3)",
+      "requirement": "Rounding-then-cap behavior (inputs/change-request.md §§3.2–3.4 — calculation order, cap, rounding)",
       "test_or_gap": "No rounding-then-cap boundary test in baseline suite",
       "reason": "No test verifies that a value which rounds above $100.00 is correctly capped. $666.70 x 15% = $100.005; ROUND_HALF_UP yields $100.01; cap reduces to $100.00.",
       "evidence": "Evolved test_rounding_then_cap verifies Decimal('666.70') -> Decimal('100.00') on the correct implementation; missing_discount_cap mutant fails it with Decimal('100.01') != Decimal('100.00')",
